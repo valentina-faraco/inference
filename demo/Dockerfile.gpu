@@ -1,0 +1,5 @@
+FROM python:3.8-slim 
+COPY tasks.py .
+COPY infer.py .
+RUN pip install celery numpy pillow redis
+ENTRYPOINT python infer.py

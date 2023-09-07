@@ -1,0 +1,31 @@
+version: '3.8'
+services:
+  webserver:
+    container_name: webserver
+    build:
+      context: ./
+      dockerfile: Dockerfile.webserver
+    ports:
+      - 8000:8000
+    links:
+      - inference-redis
+  cpux:
+    container_name: cpux
+    ipc: "shareable"
+    build:
+      context: ./
+      dockerfile: Dockerfile.cpu
+    links:
+      - inference-redis
+  gpu: 
+    container_name: gpu
+    ipc: "service:cpux"
+    build:
+      context: ./
+      dockerfile: Dockerfile.gpu
+    links:
+      - inference-redis
+    depends_on:
+      - cpux
+  inference-redis:
+    image: redis

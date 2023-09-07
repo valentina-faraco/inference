@@ -1,0 +1,4 @@
+FROM python:3.8-slim 
+COPY tasks.py .
+RUN pip install celery numpy pillow redis
+ENTRYPOINT celery -A tasks worker -Q cpu --loglevel=INFO
