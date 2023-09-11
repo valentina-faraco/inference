@@ -17,6 +17,7 @@ services:
       dockerfile: Dockerfile.cpu
     links:
       - inference-redis
+    shm_size: '8gb'
   gpu: 
     container_name: gpu
     ipc: "service:cpux"

@@ -46,7 +46,7 @@ def infer_loop():
         for b in batch:
             print(b["id"])
             images.append(load_image(b))
-        time.sleep(4)
+        time.sleep(0.1)
         for index, im in enumerate(images):
             info = write_response(im)
             postprocess.s(info, batch[index]["id"]).delay()

@@ -3,4 +3,4 @@ RUN pip install fastapi celery redis uvicorn numpy pillow gunicorn flask[async] 
 COPY tasks.py .
 COPY serve.py .
 COPY patched.py .
-ENTRYPOINT python serve.py
+ENTRYPOINT uvicorn serve:app --port 8000 --host 0.0.0.0
