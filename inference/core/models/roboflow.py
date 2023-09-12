@@ -490,7 +490,9 @@ class RoboflowInferenceModel(Model):
         Returns:
             Tuple[np.ndarray, Tuple[int, int]]: A tuple containing a numpy array of the preprocessed image pixel data and a tuple of the images original size.
         """
+        t1 = perf_counter()
         pil_image = load_image(image)
+        t2 = perf_counter()
         preprocessed_image, img_dims = self.preprocess_image(
             pil_image,
             disable_preproc_auto_orient=disable_preproc_auto_orient,
@@ -498,7 +500,7 @@ class RoboflowInferenceModel(Model):
             disable_preproc_grayscale=disable_preproc_grayscale,
             disable_preproc_static_crop=disable_preproc_static_crop,
         )
-
+        t3 = perf_counter()
         if self.resize_method == "Stretch to":
             resized = preprocessed_image.resize(
                 (self.img_size_w, self.img_size_h), Image.BICUBIC
@@ -511,10 +513,14 @@ class RoboflowInferenceModel(Model):
             resized = self.letterbox_image(
                 preprocessed_image, (self.img_size_w, self.img_size_h), c=255
             )
-
+        t4 = perf_counter()
         img_in = np.transpose(resized, (2, 0, 1)).astype(np.float32)  # HWC -> CHW
+        t5 = perf_counter()
         img_in = np.expand_dims(img_in, axis=0)
-
+        t6 = perf_counter()
+        print(
+            f"load_image: {t2-t1}, preprocess_image: {t3-t2}, resize: {t4-t3}, transpose: {t5-t4}, expand_dims: {t6-t5}"
+        )
         return img_in, img_dims
 
     def preprocess_image(

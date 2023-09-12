@@ -108,9 +108,10 @@ class InstanceSegmentationBaseOnnxRoboflowInferenceModel(
             )
             img_dims = [img_dims]
             unwrap = True
-
+        t2 = perf_counter()
         img_in /= 255.0
         predictions, protos = self.infer_onnx(img_in)
+        t3 = perf_counter()
         predictions = w_np_non_max_suppression(
             predictions,
             conf_thresh=confidence,
@@ -120,6 +121,7 @@ class InstanceSegmentationBaseOnnxRoboflowInferenceModel(
             max_candidate_detections=max_candidates,
             num_masks=32,
         )
+        t4 = perf_counter()
         infer_shape = (self.img_size_w, self.img_size_h)
         predictions = np.array(predictions)
         masks = []
@@ -154,7 +156,9 @@ class InstanceSegmentationBaseOnnxRoboflowInferenceModel(
                     raise InvalidMaskDecodeArgument(
                         f"Invalid mask_decode_mode: {mask_decode_mode}. Must be one of ['accurate', 'fast', 'tradeoff']"
                     )
+                t5 = perf_counter()
                 polys = mask2poly(batch_masks)
+                t6 = perf_counter()
                 pred[:, :4] = postprocess_predictions(
                     [pred[:, :4]],
                     infer_shape,
@@ -163,6 +167,7 @@ class InstanceSegmentationBaseOnnxRoboflowInferenceModel(
                     resize_method=self.resize_method,
                     disable_preproc_static_crop=disable_preproc_static_crop,
                 )[0]
+                t7 = perf_counter()
                 polys = scale_polys(
                     output_mask_shape,
                     polys,
@@ -170,9 +175,14 @@ class InstanceSegmentationBaseOnnxRoboflowInferenceModel(
                     self.preproc,
                     resize_method=self.resize_method,
                 )
+                t8 = perf_counter()
                 masks.append(polys)
         else:
             masks.append([])
+
+        print(
+            f"Preproc: {t2 - t1}, Infer: {t3 - t2}, NMS: {t4 - t3}, Mask Decode: {t5 - t4}, Mask2Poly: {t6 - t5}, Postproc: {t7 - t6}, Scale Polys: {t8 - t7}"
+        )
         if return_image_dims:
             return predictions, masks, img_dims
         else:

@@ -1,4 +1,5 @@
 import functools
+from time import perf_counter
 
 import numpy as np
 import piexif
@@ -97,6 +98,7 @@ def prepare(
         The function uses global flags like `DISABLE_PREPROC_AUTO_ORIENT`, `DISABLE_PREPROC_STATIC_CROP`, etc.
         to conditionally enable or disable certain preprocessing steps.
     """
+    t1 = perf_counter()
     if (
         "auto-orient" in preproc.keys()
         and not DISABLE_PREPROC_AUTO_ORIENT
@@ -106,6 +108,8 @@ def prepare(
             # perform auto-orient logic
             image = auto_orient(image)
     img_dims = image.size[-1::-1]
+    t2 = perf_counter()
+    print(f"auto-orient: {t2 - t1}")
     # # static crop
     if (
         "static-crop" in preproc.keys()

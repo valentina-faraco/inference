@@ -59,9 +59,11 @@ class Model(InferenceMixin):
         """
         t1 = perf_counter()
         predictions_data = self.infer(**request.dict(), return_image_dims=True)
+        t2 = perf_counter()
         responses = self.make_response(
             *predictions_data, class_filter=request.class_filter
         )
+        t3 = perf_counter()
         for response in responses:
             response.time = perf_counter() - t1
 
@@ -71,7 +73,9 @@ class Model(InferenceMixin):
 
         if not isinstance(request.image, list):
             responses = responses[0]
-
+        print(
+            f"Total time: {t3 - t1:.3f}, Inference time: {t2 - t1:.3f}, Make response time: {t3 - t2:.3f}"
+        )
         return responses
 
     def make_response(
