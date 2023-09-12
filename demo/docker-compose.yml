@@ -28,5 +28,12 @@ services:
       - inference-redis
     depends_on:
       - cpux
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
   inference-redis:
     image: redis

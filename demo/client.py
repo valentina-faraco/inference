@@ -45,7 +45,7 @@ async def do_request(session, i):
     print(f"Starting {i}")
     async with session.post(
         'http://localhost:8000/infer',
-        json={"image": encode_bas64("testim.jpg"), "model": "model2"},
+        json={"image": encode_bas64("youtube-19.jpg"), "model": "model2"},
     ) as response:
         resp = await response.json()
         print(f"Finished {i}")
@@ -54,10 +54,16 @@ async def do_request(session, i):
 
 async def main():
     tasks = []
+    import time
+    start = time.time()
+    num_requests = 1000
     async with aiohttp.ClientSession(read_timeout=0) as session:
-        for i in range(50000):
+        for i in range(num_requests):
             tasks.append(do_request(session, i))
         await asyncio.gather(*tasks)
+    total = time.time() - start
+    print(f"{num_requests / total} fps")
+
     
 
 if __name__ == "__main__":

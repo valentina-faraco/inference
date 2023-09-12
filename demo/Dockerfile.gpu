@@ -1,5 +1,6 @@
 FROM python:3.8-slim 
+RUN pip install celery numpy pillow redis inference[gpu]
+RUN apt-get update && apt-get install ffmpeg libsm6 libxext6  -y
 COPY tasks.py .
 COPY infer.py .
-RUN pip install celery numpy pillow redis
 ENTRYPOINT python infer.py

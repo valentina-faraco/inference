@@ -1,5 +1,7 @@
 FROM python:3.8-slim 
 RUN pip install fastapi celery redis uvicorn numpy pillow gunicorn flask[async] gevent aiohttp 
+RUN pip install inference[gpu]
+RUN apt-get update && apt-get install ffmpeg libsm6 libxext6  -y
 COPY tasks.py .
 COPY serve.py .
 COPY patched.py .

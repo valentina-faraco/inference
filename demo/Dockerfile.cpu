@@ -1,4 +1,5 @@
 FROM python:3.8-slim 
+RUN pip install celery numpy pillow redis inference[gpu]
+RUN apt-get update && apt-get install ffmpeg libsm6 libxext6  -y
 COPY tasks.py .
-RUN pip install celery numpy pillow redis
 ENTRYPOINT celery -A tasks worker -Q cpu --loglevel=INFO
