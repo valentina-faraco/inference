@@ -28,7 +28,7 @@ To install the Inference using pip, run one of the following commands, depending
 
 ```bash
 pip install inference
-pip install inference[gpu]
+pip install inference-gpu
 pip install inference[arm]
 pip install inference[jetson]
 pip install inference[trt]
