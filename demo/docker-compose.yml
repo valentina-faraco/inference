@@ -18,6 +18,16 @@ services:
     links:
       - inference-redis
     shm_size: '8gb'
+    entrypoint: celery -A tasks worker --prefetch-multiplier 1 --concurrency 32 -Q pre --loglevel=INFO 
+  cpu2:
+    container_name: cpu2
+    ipc: "service:cpux"
+    build:
+      context: ./
+      dockerfile: Dockerfile.cpu
+    links:
+      - inference-redis
+    entrypoint: celery -A tasks worker --prefetch-multiplier 1 --concurrency 8 -Q post --loglevel=INFO 
   gpu: 
     container_name: gpu
     ipc: "service:cpux"
@@ -26,14 +36,12 @@ services:
       dockerfile: Dockerfile.gpu
     links:
       - inference-redis
-    depends_on:
-      - cpux
     deploy:
       resources:
         reservations:
           devices:
             - driver: nvidia
-              count: 1
               capabilities: [gpu]
+              count: 1
   inference-redis:
     image: redis

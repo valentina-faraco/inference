@@ -5,11 +5,15 @@ import asyncio
 import aiohttp
 
 
-def encode_bas64(image_path):
+def encode_bas64(image_path, vips=False):
     with open(image_path, "rb") as image:
-        image_string = base64.b64encode(image.read())
+        x = image.read()
+        if vips:
+            return x
+        image_string = base64.b64encode(x)
 
     return image_string.decode("ascii")
+
 
 
 def request1(i):
@@ -45,27 +49,83 @@ async def do_request(session, i):
     print(f"Starting {i}")
     async with session.post(
         'http://localhost:8000/infer',
-        json={"image": encode_bas64("youtube-19.jpg"), "model": "model2"},
+        json={"image": encode_bas64("youtube-19-small.jpg"), "model": "model2"},
     ) as response:
         resp = await response.json()
         print(f"Finished {i}")
         print(resp)
         return resp
 
+async def do_request_test(session, i):
+    print(f"Starting {i}")
+    async with session.get(
+        'http://localhost:8000/'
+    ) as response:
+        resp = await response.json()
+        print(f"Finished {i}")
+        print(resp)
+        return resp
+
+def test_image_decompress_speed():
+    import pyvips
+    from PIL import Image
+    import time
+    import io
+    im = encode_bas64("youtube-19.jpg", vips=True)
+    start = time.time()
+    im = pyvips.Image.new_from_buffer(im, "")
+    im = Image.fromarray(im.numpy())
+    im.draft("RGB", (640, 640))
+    im.load()
+    im = im.resize((640, 640))
+    print(f"VIPS Took {time.time() - start} seconds")
+
+    im = encode_bas64("youtube-19.jpg")
+    start = time.time()
+    decoded_string = io.BytesIO(base64.b64decode(im))
+    im = Image.open(decoded_string)
+    im.load()
+    im = im.resize((640, 640))
+    print(f"Pillow Took {time.time() - start} seconds")
+
+    im = encode_bas64("youtube-19.jpg")
+    start = time.time()
+    decoded_string = io.BytesIO(base64.b64decode(im))
+    im = Image.open(decoded_string)
+    im.draft("RGB", (640, 640))
+    im.load()
+    im = im.resize((640, 640))
+    print(f"Pillow (Draft) Took {time.time() - start} seconds")
+
+    start = time.time()
+    im = Image.open("youtube-19.jpg")
+    print(im.draft("RGB", (1920 /2, 1080/2)))
+    im.load()
+    im = im.resize((640, 640))
+    print(f"Pillow (Draft) (FILE) Took {time.time() - start} seconds")
+    print(im)
+    
+    from PIL import features
+    print(features.check_feature('libjpeg_turbo'))
+
 async def main():
     tasks = []
     import time
     start = time.time()
     num_requests = 1000
-    async with aiohttp.ClientSession(read_timeout=0) as session:
+    connector = aiohttp.TCPConnector(limit=10000, limit_per_host=100000)
+    async with aiohttp.ClientSession(read_timeout=0, connector=connector) as session:
         for i in range(num_requests):
             tasks.append(do_request(session, i))
         await asyncio.gather(*tasks)
     total = time.time() - start
+    print(f"Total time: {total:.2f} seconds")
     print(f"{num_requests / total} fps")
 
-    
-
 if __name__ == "__main__":
+    from PIL import Image
+    im = Image.open("youtube-19.jpg")
+    im = im.resize((480, 360))
+    im.save("youtube-19-small.jpg")
     loop = asyncio.get_event_loop()
     loop.run_until_complete(main())

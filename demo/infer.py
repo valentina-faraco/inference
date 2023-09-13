@@ -1,4 +1,5 @@
 from multiprocessing import shared_memory
+import logging
 import numpy as np
 from PIL import Image
 import io
@@ -10,11 +11,12 @@ from tasks import postprocess
 from inference.models.utils import get_roboflow_model
 
 r = Redis(host="inference-redis", port="6379", decode_responses=True)
-BATCH_SIZE = 32
+BATCH_SIZE = 64
+logging.basicConfig(level=logging.INFO)
 
 class InferServer:
     def __init__(self):
-        self.model = get_roboflow_model("melee/5", "API_KEY")
+        self.model = get_roboflow_model("melee/5", "Nw3QZal3hhwHP5npbWmw")
 
     def get_batch(self, model_names):
         batches = [r.zrange(f"infer:{m}", 0, BATCH_SIZE - 1, withscores=True) for m in model_names]
@@ -25,13 +27,9 @@ class InferServer:
         model_index = fitnesses.index(max(fitnesses))
         batch = batches[model_index]
         selected_model = model_names[model_index]
-        print("----------------------------------MODEL--------------------------------------")
-        print(selected_model)
         r.zrem(f"infer:{selected_model}", *[b[0] for b in batch])
         r.hincrby(f"requests", selected_model, -len(batch))
         batch = [json.loads(b[0]) for b in batch]
-        print("----------------------------------BATCH--------------------------------------")
-        print(len(batch))
         return batch
 
     def infer_loop(self):
@@ -41,38 +39,29 @@ class InferServer:
             if not model_names:
                 time.sleep(0.1)
                 continue
-            print("--------------------------------REQUEST_COUNTS_BEFORE--------------------------------------")
-            print(request_counts)
             batch = self.get_batch(model_names)
-            print("--------------------------------REQUEST_COUNTS_AFTER--------------------------------------")
-            print(r.hgetall("requests"))
-            print("--------------------------------INFERRING--------------------------------------")
+            logging.info(f"BATCH SIZE {len(batch)}")
             images = []
             dims = []
-            import logging
-            logging.basicConfig(level=logging.INFO)
+            shms = []
             for b in batch:
-                images.append(self.load_image(b))
+                shm = shared_memory.SharedMemory(name=b["chunk_name"])
+                image = np.ndarray(b["image_shape"], dtype=b["image_dtype"], buffer=shm.buf)
+                images.append(image)
                 dims.append(b["image_dim"])
-            for image in images:
-                print(image.shape)
-                logging.info(image.shape)
+                shms.append(shm)
             outputs = self.model.predict(images)
-            print(outputs.shape)
-            logging.info(outputs.shape)
-            for index, im in enumerate(images):
-                info = self.write_response(outputs[index])
-                postprocess.s(info, batch[index]["id"], dims[index]).delay()
+            del images
+            for shm in shms:
+                shm.close()
+                shm.unlink()
+            for output, b, dim in zip(outputs, batch, dims):
+                info = self.write_response(output)
+                postprocess.s(info, b["id"], dim).delay()
             
     def load_image(self, args):
         shm = shared_memory.SharedMemory(name=args["chunk_name"])
-        image = np.ndarray(args["image_shape"], dtype=args["image_dtype"], buffer=shm.buf)
-        im_arr = np.asarray(image)
-        im2 = np.ndarray(args["image_shape"], dtype=args["image_dtype"])
-        im2[:] = im_arr
-        shm.close()
-        shm.unlink()
-        return im2
+        return image
 
     def write_response(self, im_arr):
         shm2 = shared_memory.SharedMemory(create=True, size=im_arr.nbytes)

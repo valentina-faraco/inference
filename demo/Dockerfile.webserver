@@ -1,8 +1,19 @@
-FROM python:3.8-slim 
-RUN pip install fastapi celery redis uvicorn numpy pillow gunicorn flask[async] gevent aiohttp 
-RUN pip install inference[gpu]
-RUN apt-get update && apt-get install ffmpeg libsm6 libxext6  -y
+FROM nvcr.io/nvidia/cuda:11.4.2-cudnn8-runtime-ubuntu20.04
+RUN rm -rf /var/lib/apt/lists/* && apt-get clean && apt-get update -y && DEBIAN_FRONTEND=noninteractive apt-get install -y \
+    ffmpeg \
+    libxext6 \
+    libopencv-dev \
+    uvicorn \
+    python3-pip \
+    git \
+    && rm -rf /var/lib/apt/lists/*
+RUN pip3 install fastapi celery redis uvicorn numpy pillow gunicorn flask[async] gevent aiohttp 
+RUN pip3 install inference
+RUN apt-get update && apt-get install ffmpeg libsm6 libxext6 libvips -y
+RUN pip3 install pyvips
 COPY tasks.py .
 COPY serve.py .
 COPY patched.py .
-ENTRYPOINT uvicorn serve:app --port 8000 --host 0.0.0.0
+RUN pip3 install gunicorn
+ENTRYPOINT gunicorn serve:app --worker-class uvicorn.workers.UvicornWorker --workers 4 --bind 0.0.0.0:8000
+ENTRYPOINT uvicorn serve:app --loop asyncio --workers 4 --port 8000 --host 0.0.0.0

@@ -8,6 +8,7 @@ from redis import Redis
 import json
 import time
 from inference.models.utils import get_roboflow_model
+import pyvips
 
 r = Redis(host="inference-redis", port="6379", decode_responses=True)
 app = Celery("tasks", broker="redis://inference-redis:6379")
@@ -22,10 +23,11 @@ def decode_base64(base64_string):
     return img
 
 
-@app.task(queue="cpu")
+@app.task(queue="pre")
 def preprocess(model_name, image, id_, request_time):
     image = decode_base64(image)
-    image = np.asarray(image)
+    image.draft("RGB", (640, 640))
+    image.load()
     image, img_dims = model.preprocess(image)
     image = image[0]
     shm = shared_memory.SharedMemory(create=True, size=image.nbytes)
@@ -44,7 +46,7 @@ def preprocess(model_name, image, id_, request_time):
     r.hincrby(f"requests", model_name, 1)
 
 
-@app.task(queue="cpu")
+@app.task(queue="post")
 def postprocess(args, id_, dim):
     shm = shared_memory.SharedMemory(name=args["chunk_name"])
     image = np.ndarray(args["image_shape"], dtype=args["image_dtype"], buffer=shm.buf)
