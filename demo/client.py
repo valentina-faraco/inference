@@ -55,6 +55,37 @@ async def do_request(session, i):
         print(f"Finished {i}")
         print(resp)
         return resp
+    
+async def do_old_request(session, i):
+
+    project_id = ""
+    model_version = ""
+    image_url = ""
+    confidence = 0.75
+    api_key = "Nw3QZal3hhwHP5npbWmw"
+
+    print(f"Starting {i}")
+    infer_payload = {
+        "image": {
+            "type": "base64",
+            "value": encode_bas64("youtube-19.jpg"),
+        },
+        "confidence": 0.4,
+        "iou_threshold": 0.5,
+        "api_key": api_key,
+        "model_id": "melee/5"
+    }
+    headers = {"Content-Type": "application/x-www-form-urlencoded"}
+    async with session.post(
+        f'http://detect.roboflow.com/melee/5?api_key={api_key}',
+        data=encode_bas64("youtube-19-small.jpg"),
+        headers=headers
+    ) as response:
+        resp = await response.json()
+        print(f"Finished {i}")
+        print(resp)
+        return resp
+
 
 async def do_request_test(session, i):
     print(f"Starting {i}")
@@ -92,15 +123,18 @@ def test_image_decompress_speed():
     start = time.time()
     decoded_string = io.BytesIO(base64.b64decode(im))
     im = Image.open(decoded_string)
-    im.draft("RGB", (640, 640))
+    im.draft("RGB", im.size)
     im.load()
+    print(f"Image size after draft {im.size}")
     im = im.resize((640, 640))
     print(f"Pillow (Draft) Took {time.time() - start} seconds")
 
     start = time.time()
     im = Image.open("youtube-19.jpg")
-    print(im.draft("RGB", (1920 /2, 1080/2)))
+    print(im.draft("RGB", im.size))
+    print(f"Last size {im.size}")
     im.load()
+    print(f"Last size {im.size}")
     im = im.resize((640, 640))
     print(f"Pillow (Draft) (FILE) Took {time.time() - start} seconds")
     print(im)
@@ -123,9 +157,10 @@ async def main():
     print(f"{num_requests / total} fps")
 
 if __name__ == "__main__":
-    from PIL import Image
-    im = Image.open("youtube-19.jpg")
-    im = im.resize((480, 360))
-    im.save("youtube-19-small.jpg")
-    loop = asyncio.get_event_loop()
-    loop.run_until_complete(main())
+    # from PIL import Image
+    # im = Image.open("youtube-19.jpg")
+    # im = im.resize((640, 640))
+    # im.save("youtube-19-small.jpg")
+    # loop = asyncio.get_event_loop()
+    # loop.run_until_complete(main())
+    test_image_decompress_speed()

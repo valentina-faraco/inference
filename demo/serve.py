@@ -53,7 +53,7 @@ async def infer(request: Request):
     image = json_body["image"]
     model = json_body["model"]
     id_ = str(uuid.uuid4())
-    start_task(id_)
+    start_task(id_) # add to fsm queued state
     preprocess.s(model, image, id_, start_time).delay()
     results = await wait_for_response(id_)
     return {"results": results}

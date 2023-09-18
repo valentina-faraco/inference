@@ -11,7 +11,7 @@ from tasks import postprocess
 from inference.models.utils import get_roboflow_model
 
 r = Redis(host="inference-redis", port="6379", decode_responses=True)
-BATCH_SIZE = 64
+BATCH_SIZE = 1
 logging.basicConfig(level=logging.INFO)
 
 class InferServer:
