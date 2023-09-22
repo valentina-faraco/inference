@@ -15,7 +15,7 @@ logging.basicConfig(level=logging.INFO)
 app = FastAPI()
 model = get_roboflow_model("melee/5", "Nw3QZal3hhwHP5npbWmw")
 
-r = Redis(host="inference-redis", port="6379", decode_responses=True)
+r = Redis(host="localhost", port="6379", decode_responses=True)
 
 @app.get("/")
 async def root(request: Request):
@@ -31,7 +31,7 @@ INITIAL_STATE = 0
 def start_task(id_):
     r.set(TASK_STATUS_KEY.format(id_), INITIAL_STATE)
 
-async def wait_for_response(id_, initial_sleep=0.3, interval=0.02, timeout=float("inf")):
+async def wait_for_response(id_, initial_sleep=0.3, interval=0.05, timeout=float("inf")):
     start = time.time()
     await asyncio.sleep(initial_sleep)
     while time.time() < start + timeout:

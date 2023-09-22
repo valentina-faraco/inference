@@ -10,10 +10,8 @@ import time
 from inference.models.utils import get_roboflow_model
 import pyvips
 
-r = Redis(host="inference-redis", port="6379", decode_responses=True)
-app = Celery("tasks", broker="redis://inference-redis:6379")
-app.conf.result_backend = "redis://inference-redis:6379/0"
-
+r = Redis(host="localhost", port="6379", decode_responses=True)
+app = Celery("tasks", broker="redis://localhost:6379")
 model = get_roboflow_model("melee/5", "Nw3QZal3hhwHP5npbWmw")
 
 

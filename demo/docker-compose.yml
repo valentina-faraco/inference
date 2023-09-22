@@ -2,40 +2,28 @@ version: '3.8'
 services:
   webserver:
     container_name: webserver
+    network_mode: host
     build:
       context: ./
       dockerfile: Dockerfile.webserver
     ports:
       - 8000:8000
-    links:
-      - inference-redis
   cpux:
     container_name: cpux
+    network_mode: host
     ipc: "shareable"
     build:
       context: ./
       dockerfile: Dockerfile.cpu
-    links:
-      - inference-redis
     shm_size: '8gb'
-    entrypoint: celery -A tasks worker --prefetch-multiplier 1 --concurrency 12 -Q pre --loglevel=INFO 
-  cpu2:
-    container_name: cpu2
-    ipc: "service:cpux"
-    build:
-      context: ./
-      dockerfile: Dockerfile.cpu
-    links:
-      - inference-redis
-    entrypoint: celery -A tasks worker --prefetch-multiplier 1 --concurrency 4 -Q post --loglevel=INFO 
+    entrypoint: celery -A tasks worker --prefetch-multiplier 4 --concurrency 16 -Q pre,post --loglevel=INFO 
   gpu: 
     container_name: gpu
+    network_mode: host
     ipc: "service:cpux"
     build:
       context: ./
       dockerfile: Dockerfile.gpu
-    links:
-      - inference-redis
     deploy:
       resources:
         reservations:
@@ -45,3 +33,6 @@ services:
               count: 1
   inference-redis:
     image: redis
+    network_mode: host
+    ports:
+     - 6379:6379
