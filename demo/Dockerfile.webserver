@@ -11,9 +11,9 @@ RUN pip3 install fastapi celery redis uvicorn numpy pillow gunicorn flask[async]
 RUN pip3 install inference
 RUN apt-get update && apt-get install ffmpeg libsm6 libxext6 libvips -y
 RUN pip3 install pyvips
+RUN pip3 install gunicorn
 COPY tasks.py .
 COPY serve.py .
 COPY patched.py .
-RUN pip3 install gunicorn
 ENTRYPOINT gunicorn serve:app --worker-class uvicorn.workers.UvicornWorker --workers 4 --bind 0.0.0.0:8000
-ENTRYPOINT uvicorn serve:app --loop asyncio --workers 4 --port 8000 --host 0.0.0.0
+ENTRYPOINT uvicorn serve:app --loop asyncio --workers 8 --port 8000 --host 0.0.0.0

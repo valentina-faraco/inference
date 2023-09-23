@@ -66,20 +66,18 @@ async def do_old_request(session, i):
 
     print(f"Starting {i}")
     infer_payload = {
-        "image": {
+        "image": [{
             "type": "base64",
-            "value": encode_bas64("youtube-19.jpg"),
-        },
+            "value": encode_bas64("youtube-19-small.jpg"),
+        }]*64,
         "confidence": 0.4,
         "iou_threshold": 0.5,
         "api_key": api_key,
         "model_id": "melee/5"
     }
-    headers = {"Content-Type": "application/x-www-form-urlencoded"}
     async with session.post(
-        f'http://detect.roboflow.com/melee/5?api_key={api_key}',
-        data=encode_bas64("youtube-19-small.jpg"),
-        headers=headers
+        f'http://localhost:9001/infer/object_detection',
+        json=infer_payload,
     ) as response:
         resp = await response.json()
         print(f"Finished {i}")
@@ -145,22 +143,23 @@ def test_image_decompress_speed():
 async def main():
     tasks = []
     import time
-    start = time.time()
-    num_requests = 1000
+    request_batch_size = 1
+    num_requests = 1000 // request_batch_size
     connector = aiohttp.TCPConnector(limit=10000, limit_per_host=100000)
+    start = time.time()
     async with aiohttp.ClientSession(read_timeout=0, connector=connector) as session:
         for i in range(num_requests):
             tasks.append(do_request(session, i))
         await asyncio.gather(*tasks)
     total = time.time() - start
     print(f"Total time: {total:.2f} seconds")
-    print(f"{num_requests / total} fps")
+    print(f"{num_requests * request_batch_size / total} fps")
 
 if __name__ == "__main__":
-    # from PIL import Image
-    # im = Image.open("youtube-19.jpg")
-    # im = im.resize((640, 640))
-    # im.save("youtube-19-small.jpg")
-    # loop = asyncio.get_event_loop()
-    # loop.run_until_complete(main())
-    test_image_decompress_speed()
+    from PIL import Image
+    im = Image.open("youtube-19.jpg")
+    im = im.resize((640, 640))
+    im.save("youtube-19-small.jpg")
+    loop = asyncio.get_event_loop()
+    loop.run_until_complete(main())
+    # test_image_decompress_speed()

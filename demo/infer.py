@@ -4,13 +4,15 @@ import numpy as np
 from PIL import Image
 import io
 import base64
-from redis import Redis
+from redis import Redis, ConnectionPool
 import json
 import time
 from tasks import postprocess
+from time import perf_counter
 from inference.models.utils import get_roboflow_model
 
-r = Redis(host="localhost", port="6379", decode_responses=True)
+pool = ConnectionPool(host="localhost", port=6379, decode_responses=True)
+r = Redis(connection_pool=pool, decode_responses=True)
 BATCH_SIZE = 64
 logging.basicConfig(level=logging.INFO)
 
@@ -34,10 +36,11 @@ class InferServer:
 
     def infer_loop(self):
         while True:
+            t1 = perf_counter()
             request_counts = r.hgetall("requests")
             model_names = [model_name for model_name, count in request_counts.items() if int(count) > 0]
             if not model_names:
-                time.sleep(0.1)
+                time.sleep(0.005)
                 continue
             batch = self.get_batch(model_names)
             logging.info(f"BATCH SIZE {len(batch)}")
@@ -50,6 +53,7 @@ class InferServer:
                 images.append(image)
                 dims.append(b["image_dim"])
                 shms.append(shm)
+            logging.info(f"BATCHING TOOK {perf_counter() - t1} seconds")
             outputs = self.model.predict(images)
             del images
             for shm in shms:

@@ -16,7 +16,13 @@ services:
       context: ./
       dockerfile: Dockerfile.cpu
     shm_size: '8gb'
-    entrypoint: celery -A tasks worker --prefetch-multiplier 4 --concurrency 16 -Q pre,post --loglevel=INFO 
+    entrypoint: celery -A tasks worker --prefetch-multiplier 8 --concurrency 16 -Q pre,post --loglevel=INFO 
+    deploy:
+      resources:
+        reservations:
+          cpus: '6'
+          memory: '15G'
+
   gpu: 
     container_name: gpu
     network_mode: host
@@ -31,8 +37,15 @@ services:
             - driver: nvidia
               capabilities: [gpu]
               count: 1
+          cpus: '2'
+          memory: '5G'
   inference-redis:
     image: redis
     network_mode: host
     ports:
      - 6379:6379
+    deploy:
+      resources:
+        reservations:
+          cpus: '1'
+          memory: '4G'

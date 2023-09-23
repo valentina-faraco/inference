@@ -4,13 +4,13 @@ import numpy as np
 from PIL import Image
 import io
 import base64
-from redis import Redis
+from redis import Redis, ConnectionPool
 import json
 import time
 from inference.models.utils import get_roboflow_model
 import pyvips
 
-r = Redis(host="localhost", port="6379", decode_responses=True)
+pool = ConnectionPool(host="localhost", port=6379, decode_responses=True)
 app = Celery("tasks", broker="redis://localhost:6379")
 model = get_roboflow_model("melee/5", "Nw3QZal3hhwHP5npbWmw")
 
@@ -40,8 +40,11 @@ def preprocess(model_name, image, id_, request_time):
         "image_dim": img_dims[0],
     }
     return_vals = json.dumps(return_vals)
-    r.zadd(f"infer:{model_name}", {return_vals: request_time})
-    r.hincrby(f"requests", model_name, 1)
+    r = Redis(connection_pool=pool, decode_responses=True)
+    pipe = r.pipeline()
+    pipe.zadd(f"infer:{model_name}", {return_vals: request_time})
+    pipe.hincrby(f"requests", model_name, 1)
+    pipe.execute()
 
 
 @app.task(queue="post")
@@ -51,7 +54,10 @@ def postprocess(args, id_, dim):
     results = model.postprocess(np.array([image]), np.array([dim]))
     results = model.make_response(results, np.array([dim]))[0]
     results = results.json(exclude_none=True, by_alias=True)
-    r.set(f"results:{id_}", json.dumps(results))
-    r.set(f"status:{id_}", 1)
+    r = Redis(connection_pool=pool, decode_responses=True)
+    pipe = r.pipeline()
+    pipe.set(f"results:{id_}", json.dumps(results))
+    pipe.set(f"status:{id_}", 1)
+    pipe.execute()
     shm.close()
     shm.unlink()
