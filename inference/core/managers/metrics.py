@@ -9,6 +9,19 @@ from inference.core.cache import cache
 from inference.core.logger import logger
 from inference.core.version import __version__
 
+try:
+    from pynvml import (
+        nvmlInit,
+        nvmlDeviceGetCount,
+        nvmlDeviceGetHandleByIndex,
+        nvmlDeviceGetName,
+        nvmlDeviceGetMemoryInfo,
+        nvmlDeviceGetUtilizationRates,
+        NVMLError,
+    )
+except ImportError:
+    pass
+
 
 def get_model_metrics(
     inverence_server_id: str, model_id: str, min: float = -1, max: float = float("inf")
@@ -72,6 +85,28 @@ def get_system_info():
         info["ip_address"] = socket.gethostbyname(socket.gethostname())
         info["mac_address"] = ":".join(re.findall("..", "%012x" % uuid.getnode()))
         info["processor"] = platform.processor()
+        info["gpu_count"] = 0
+        info["gpus"] = []
+        # NVIDIA GPU Information
+        try:
+            nvmlInit()
+            gpu_count = nvmlDeviceGetCount()
+            info["gpu_count"] = gpu_count
+            info["gpus"] = []
+            for i in range(gpu_count):
+                handle = nvmlDeviceGetHandleByIndex(i)
+                name = nvmlDeviceGetName(handle)
+                memory_info = nvmlDeviceGetMemoryInfo(handle)
+                info["gpus"].append(
+                    {
+                        "name": name,
+                        "total_memory": memory_info.total,
+                    }
+                )
+        except NVMLError as e:
+            logger.debug(f"Could not retrieve NVIDIA GPU Information: {str(e)}")
+            info["gpu_count"] = 0
+            info["gpus"] = []
         return json.dumps(info)
     except Exception as e:
         logger.exception(e)

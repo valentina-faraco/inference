@@ -39,6 +39,7 @@ from inference.core.exceptions import (
     OnnxProviderNotAvailable,
     TensorrtRoboflowAPIError,
 )
+from inference.core.logger import logger
 from inference.core.models.base import Model
 from inference.core.utils.image_utils import load_image, load_image_rgb
 from inference.core.utils.onnx import get_onnxruntime_execution_providers
@@ -239,7 +240,7 @@ class RoboflowInferenceModel(Model):
         infer_bucket_files = self.get_infer_bucket_file_list()
         infer_bucket_files.append(self.weights_file)
         if all([os.path.exists(self.cache_file(f)) for f in infer_bucket_files]):
-            self.log("Model artifacts already downloaded, loading model from cache")
+            logger.debug("Model artifacts already downloaded, loading model from cache")
             if "environment.json" in infer_bucket_files:
                 with self.open_cache("environment.json", "r") as f:
                     self.environment = json.load(f)
@@ -277,7 +278,7 @@ class RoboflowInferenceModel(Model):
         else:
             # If AWS keys are available, then we can download model artifacts directly
             if AWS_ACCESS_KEY_ID and AWS_SECRET_ACCESS_KEY:
-                self.log("Downloading model artifacts from S3")
+                logger.debug("Downloading model artifacts from S3")
                 for f in infer_bucket_files:
                     success = False
                     attempts = 0
@@ -336,7 +337,7 @@ class RoboflowInferenceModel(Model):
                         i += 1
 
             else:
-                self.log("Downloading model artifacts from Roboflow API")
+                logger.debug("Downloading model artifacts from Roboflow API")
                 # AWS Keys are not available so we use the API Key to hit the Roboflow API which returns a signed link for downloading model artifacts
                 self.api_url = ApiUrl(
                     f"{API_BASE_URL}/ort/{self.endpoint}?api_key={self.api_key}&device={self.device_id}&nocache=true&dynamic=true"
@@ -363,7 +364,7 @@ class RoboflowInferenceModel(Model):
                 with self.open_cache(self.weights_file, "wb") as f:
                     f.write(r.content)
                 if perf_counter() - t1 > 120:
-                    self.log(
+                    logger.debug(
                         "Weights download took longer than 120 seconds, refreshing API request"
                     )
                     api_data = get_api_data(self.api_url)
@@ -393,7 +394,7 @@ class RoboflowInferenceModel(Model):
                 self.resize_method = "Stretch to"
         else:
             self.resize_method = "Stretch to"
-        self.log(f"Resize method is '{self.resize_method}'")
+        logger.debug(f"Resize method is '{self.resize_method}'")
 
     def initialize_model(self) -> None:
         """Initialize the model.
@@ -592,7 +593,7 @@ class RoboflowCoreModel(RoboflowInferenceModel):
                 for f in self.get_infer_bucket_file_list()
             ]
         ):
-            self.log("Downloading model artifacts")
+            logger.debug("Downloading model artifacts")
             if AWS_ACCESS_KEY_ID and AWS_SECRET_ACCESS_KEY:
                 infer_bucket_files = self.get_infer_bucket_file_list()
                 for f in infer_bucket_files:
@@ -663,12 +664,12 @@ class RoboflowCoreModel(RoboflowInferenceModel):
                             success = True
 
                     if perf_counter() - t1 > 120:
-                        self.log(
+                        logger.debug(
                             "Weights download took longer than 120 seconds, refreshing API request"
                         )
                         api_data = get_api_data(self.api_url)
         else:
-            self.log("Model artifacts already downloaded, loading from cache")
+            logger.debug("Model artifacts already downloaded, loading from cache")
 
     def get_device_id(self) -> str:
         """Returns the device ID associated with this model.
@@ -750,14 +751,14 @@ class OnnxRoboflowInferenceModel(RoboflowInferenceModel):
     def initialize_model(self) -> None:
         """Initializes the ONNX model, setting up the inference session and other necessary properties."""
         self.get_model_artifacts()
-        self.log("Creating inference session")
+        logger.debug("Creating inference session")
         t1_session = perf_counter()
         # Create an ONNX Runtime Session with a list of execution providers in priority order. ORT attempts to load providers until one is successful. This keeps the code across devices identical.
         self.onnx_session = onnxruntime.InferenceSession(
             self.cache_file(self.weights_file),
             providers=self.onnxruntime_execution_providers,
         )
-        self.log(f"Session created in {perf_counter() - t1_session} seconds")
+        logger.debug(f"Session created in {perf_counter() - t1_session} seconds")
 
         if REQUIRED_ONNX_PROVIDERS:
             available_providers = onnxruntime.get_available_providers()
@@ -783,10 +784,14 @@ class OnnxRoboflowInferenceModel(RoboflowInferenceModel):
 
         if isinstance(self.batch_size, str):
             self.batching_enabled = True
-            self.log(f"Model {self.endpoint} is loaded with dynamic batching enabled")
+            logger.debug(
+                f"Model {self.endpoint} is loaded with dynamic batching enabled"
+            )
         else:
             self.batching_enabled = False
-            self.log(f"Model {self.endpoint} is loaded with dynamic batching disabled")
+            logger.debug(
+                f"Model {self.endpoint} is loaded with dynamic batching disabled"
+            )
 
     def load_image(
         self,
