@@ -1,3 +1,5 @@
+import json
+import os
 import traceback
 from functools import partial, wraps
 from typing import Any, List, Optional, Union
@@ -294,7 +296,25 @@ class HttpInterface(BaseInterface):
         The GAZE model ID.
         """
 
-        app.mount("/", StaticFiles(directory="./inference/landing/out", html=True), name="static")
+        @app.get(
+            "/benchmark_data",
+            summary="Benchmark Data",
+            description="Get benchmark data",
+        )
+        async def benchmark_data():
+            files = os.listdir("/benchmark_data")
+            benchmark_data = []
+            for file in files:
+                with open(f"/benchmark_data/{file}", "r") as f:
+                    data = json.load(f)
+                    benchmark_data.append(data)
+            return Response(json.dumps(benchmark_data), media_type="application/json")
+
+        app.mount(
+            "/",
+            StaticFiles(directory="./inference/landing/out", html=True),
+            name="static",
+        )
 
         @app.get(
             "/info",
