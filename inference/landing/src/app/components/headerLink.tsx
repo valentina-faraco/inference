@@ -6,6 +6,7 @@ type HeaderLinkProps = {
   href: string;
   theme: "light" | "dark";
   icon: string;
+  onClick: () => void;
 };
 
 const styles = {
@@ -19,6 +20,7 @@ export default function HeaderLink({
   href,
   theme,
   icon,
+  onClick,
 }: HeaderLinkProps) {
   const style = styles[theme];
   return (
@@ -29,6 +31,7 @@ export default function HeaderLink({
         "px-4 py-3 rounded-lg flex items-center border-gray-200 shadow"
       )}
       href={href}
+      onClick={onClick}
     >
       <div className="flex items-center flex-none">
         <i

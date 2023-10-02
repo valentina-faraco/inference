@@ -12,7 +12,6 @@ export default function Home() {
   const [page, setPage] = React.useState("landing");
   return (
     <main className="flex min-h-screen flex-col items-center justify-between gap-0">
-      <div className="">Above the fold</div>
       <div
         id="aboveFold"
         className="flex flex-col gap-16 py-16 px-20 items-center w-screen h-screen"
