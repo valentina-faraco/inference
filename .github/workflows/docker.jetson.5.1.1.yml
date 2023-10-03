@@ -32,14 +32,14 @@ jobs:
         uses: actions/checkout@v3
       -
         name: Read version from file
-        run: echo "VERSION=$(python ./inference/core/version.py)" >> $GITHUB_ENV
+        run: echo "VERSION=$(DISABLE_VERSION_CHECK=true python ./inference/core/version.py)" >> $GITHUB_ENV
       -
         name: Build and Push
         uses: docker/build-push-action@v4
         with:
           push: true
-          tags: roboflow/roboflow-inference-server-trt-jetson-5.1.1:latest,roboflow/roboflow-inference-server-trt-jetson-5.1.1:${{ env.VERSION}}
-          cache-from: type=registry,ref=roboflow/roboflow-inference-server-trt-jetson-5.1.1:cache
-          cache-to: type=registry,ref=roboflow/roboflow-inference-server-trt-jetson-5.1.1:cache,mode=max
+          tags: roboflow/roboflow-inference-server-jetson-5.1.1:latest,roboflow/roboflow-inference-server-jetson-5.1.1:${{ env.VERSION}}
+          cache-from: type=registry,ref=roboflow/roboflow-inference-server-jetson-5.1.1:cache
+          cache-to: type=registry,ref=roboflow/roboflow-inference-server-jetson-5.1.1:cache,mode=max
           platforms: linux/arm64
           file: ./docker/dockerfiles/Dockerfile.onnx.jetson.5.1.1

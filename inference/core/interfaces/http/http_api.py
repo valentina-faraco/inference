@@ -9,6 +9,7 @@ from fastapi.responses import JSONResponse, Response
 from fastapi_cprofile.profiler import CProfileMiddleware
 
 from inference.core import data_models as M
+from inference.core.devices.utils import GLOBAL_INFERENCE_SERVER_ID
 from inference.core.env import (
     ALLOW_ORIGINS,
     CLIP_MODEL_ID,
@@ -19,7 +20,7 @@ from inference.core.env import (
     LAMBDA,
     LEGACY_ROUTE_ENABLED,
     METLO_KEY,
-    PINGBACK_ENABLED,
+    METRICS_ENABLED,
     PROFILE,
     ROBOFLOW_SERVICE_SECRET,
 )
@@ -183,7 +184,7 @@ class HttpInterface(BaseInterface):
                 sort_by="cumulative",
             )
 
-        if PINGBACK_ENABLED:
+        if METRICS_ENABLED:
 
             @app.middleware("http")
             async def count_errors(request: Request, call_next):
@@ -307,7 +308,25 @@ class HttpInterface(BaseInterface):
             return M.ServerVersionInfo(
                 name="Roboflow Inference Server",
                 version=__version__,
-                uuid=model_manager.model_manager.uuid,
+                uuid=GLOBAL_INFERENCE_SERVER_ID,
+            )
+
+        @app.get(
+            "/info",
+            response_model=M.ServerVersionInfo,
+            summary="Info",
+            description="Get the server name and version number",
+        )
+        async def root():
+            """Endpoint to get the server name and version number.
+
+            Returns:
+                M.ServerVersionInfo: The server version information.
+            """
+            return M.ServerVersionInfo(
+                name="Roboflow Inference Server",
+                version=__version__,
+                uuid=GLOBAL_INFERENCE_SERVER_ID,
             )
 
         # The current AWS Lambda authorizer only supports path parameters, therefore we can only use the legacy infer route. This case statement excludes routes which won't work for the current Lambda authorizer.
@@ -780,6 +799,19 @@ class HttpInterface(BaseInterface):
                     description="Shared secret used to authenticate requests to the inference server from internal services (e.g. to allow disabling inference usage tracking via the `countinference` query parameter)",
                     include_in_schema=False,
                 ),
+                disable_preproc_auto_orient: Optional[bool] = Query(
+                    False, description="If true, disables automatic image orientation"
+                ),
+                disable_preproc_contrast: Optional[bool] = Query(
+                    False, description="If true, disables automatic contrast adjustment"
+                ),
+                disable_preproc_grayscale: Optional[bool] = Query(
+                    False,
+                    description="If true, disables automatic grayscale conversion",
+                ),
+                disable_preproc_static_crop: Optional[bool] = Query(
+                    False, description="If true, disables automatic static crop"
+                ),
             ):
                 """
                 Legacy inference endpoint for object detection, instance segmentation, and classification.
@@ -879,6 +911,10 @@ class HttpInterface(BaseInterface):
                     visualization_labels=labels,
                     visualization_stroke_width=stroke,
                     visualize_predictions=True if format == "image" else False,
+                    disable_preproc_auto_orient=disable_preproc_auto_orient,
+                    disable_preproc_contrast=disable_preproc_contrast,
+                    disable_preproc_grayscale=disable_preproc_grayscale,
+                    disable_preproc_static_crop=disable_preproc_static_crop,
                     **args,
                 )
 

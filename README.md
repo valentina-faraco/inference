@@ -74,7 +74,7 @@ Alternatively, you can take advantage of some advanced execution providers using
 
 ### Extras:
 
-Some functionality requires extra dependancies. These can be installed by specifying the desired extras during installation of Roboflow Inference.
+Some functionality requires extra dependencies. These can be installed by specifying the desired extras during installation of Roboflow Inference.
 | extra | description |
 |:-------|:-------------------------------------------------|
 | `clip` | Ability to use the core `CLIP` model (by OpenAI) |
@@ -82,9 +82,9 @@ Some functionality requires extra dependancies. These can be installed by specif
 | `http` | Ability to run the http interface |
 | `sam`  | Ability to run the core `Segment Anything` model (by Meta AI) |
 
-**_Note:_** Both CLIP and Segment Anything require pytorch to run. These are included in their respective dependancies however pytorch installs can be highly environment dependant. See the [official pytorch install page](https://pytorch.org/get-started/locally/) for instructions specific to your enviornment.
+**_Note:_** Both CLIP and Segment Anything require pytorch to run. These are included in their respective dependencies however pytorch installs can be highly environment dependent. See the [official pytorch install page](https://pytorch.org/get-started/locally/) for instructions specific to your enviornment.
 
-Example install with http dependancies:
+Example install with http dependencies:
 
 ```bash
 pip install inference[http]
@@ -124,13 +124,13 @@ docker run --network=host --gpus=all roboflow/roboflow-inference-server-trt:late
 - Run on NVIDIA Jetson with JetPack `4.x`:
 
 ```bash
-docker run --privileged --net=host --runtime=nvidia roboflow/roboflow-inference-server-trt-jetson:latest
+docker run --privileged --net=host --runtime=nvidia roboflow/roboflow-inference-server-jetson:latest
 ```
 
 - Run on NVIDIA Jetson with JetPack `5.x`:
 
 ```bash
-docker run --privileged --net=host --runtime=nvidia roboflow/roboflow-inference-server-trt-jetson-5.1.1:latest
+docker run --privileged --net=host --runtime=nvidia roboflow/roboflow-inference-server-jetson-5.1.1:latest
 ```
 
 </details>
