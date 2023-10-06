@@ -2,7 +2,6 @@ import json
 import os
 import shutil
 import traceback
-import urllib
 from concurrent.futures import ThreadPoolExecutor
 from functools import partial
 from io import BytesIO
@@ -11,6 +10,7 @@ from typing import Any, List, Tuple, Union
 
 import cv2
 import numpy as np
+import onnx
 import onnxruntime
 import requests
 from PIL import Image
@@ -398,6 +398,18 @@ class RoboflowInferenceModel(Model):
             self.resize_method = "Stretch to"
         self.log(f"Resize method is '{self.resize_method}'")
 
+    def validate_model(self) -> bool:
+        """Validate the model artifacts are present and the model loaded succesfully."""
+        return True
+
+    def num_model_load_attempts(self) -> int:
+        """Get the number of attempts to download model artifacts.
+
+        Returns:
+            int: The number of attempts to download model artifacts.
+        """
+        return 3
+
     def initialize_model(self) -> None:
         """Initialize the model.
 
@@ -738,6 +750,15 @@ class OnnxRoboflowInferenceModel(RoboflowInferenceModel):
                         ),
                         "trt_fp16_enable": True,
                     },
+                )
+        artifacts_are_valid = False
+        num_tries = 0
+        while not artifacts_are_valid:
+            artifacts_are_valid = self.validate_model_artifacts()
+            num_tries += 1
+            if not artifacts_are_valid and num_tries > 2:
+                raise Exception(
+                    f"Failed to validate model artifacts after {num_tries} attempts."
                 )
         self.initialize_model()
         self.image_loader_threadpool = ThreadPoolExecutor(max_workers=None)
