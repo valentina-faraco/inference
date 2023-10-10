@@ -10,7 +10,6 @@ class VitClassification(ClassificationBaseOnnxRoboflowInferenceModel):
 
     Inherits:
         ClassificationBaseOnnxRoboflowInferenceModel: Base class for ONNX Roboflow Inference.
-        ClassificationMixin: Mixin class providing classification-specific methods.
 
     Attributes:
         multiclass (bool): A flag that specifies if the model should handle multiclass classification.

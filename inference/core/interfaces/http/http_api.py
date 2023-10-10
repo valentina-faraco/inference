@@ -206,7 +206,7 @@ class HttpInterface(BaseInterface):
         self.model_manager = model_manager
         self.model_registry = model_registry
 
-        def process_inference_request(
+        async def process_inference_request(
             inference_request: M.InferenceRequest,
         ) -> M.InferenceResponse:
             """Processes an inference request by calling the appropriate model.
