@@ -339,7 +339,7 @@ class HttpInterface(BaseInterface):
 
             @app.get(
                 "/model/registry",
-                response_model=M.ModelManagerKeys,
+                response_model=M.ModelsDescriptions,
                 summary="Get model keys",
                 description="Get the ID of each loaded model",
             )
@@ -347,14 +347,16 @@ class HttpInterface(BaseInterface):
                 """Get the ID of each loaded model in the registry.
 
                 Returns:
-                    M.ModelManagerKeys: The object containing the IDs of all loaded models.
+                    M.ModelsDescriptions: The object containing models descriptions
                 """
-
-                return M.ModelManagerKeys(model_ids=set(self.model_manager.keys()))
+                models_descriptions = self.model_manager.describe_models()
+                return M.ModelsDescriptions.from_models_descriptions(
+                    models_descriptions=models_descriptions
+                )
 
             @app.post(
                 "/model/add",
-                response_model=M.ModelManagerKeys,
+                response_model=M.ModelsDescriptions,
                 summary="Load a model",
                 description="Load the model with the given model ID",
             )
@@ -366,7 +368,7 @@ class HttpInterface(BaseInterface):
                     request (M.AddModelRequest): The request containing the model ID and optional API key.
 
                 Returns:
-                    M.ModelManagerKeys: The object containing the IDs of all loaded models.
+                    M.ModelsDescriptions: The object containing models descriptions
                 """
 
                 if request.model_id not in self.model_manager:
@@ -377,12 +379,14 @@ class HttpInterface(BaseInterface):
                         model_id=request.model_id, api_key=request.api_key
                     )
                     self.model_manager.add_model(request.model_id, model)
-
-                return M.ModelManagerKeys(model_ids=set(self.model_manager.keys()))
+                models_descriptions = self.model_manager.describe_models()
+                return M.ModelsDescriptions.from_models_descriptions(
+                    models_descriptions=models_descriptions
+                )
 
             @app.post(
                 "/model/remove",
-                response_model=M.ModelManagerKeys,
+                response_model=M.ModelsDescriptions,
                 summary="Remove a model",
                 description="Remove the model with the given model ID",
             )
@@ -394,15 +398,18 @@ class HttpInterface(BaseInterface):
                     request (M.ClearModelRequest): The request containing the model ID to be removed.
 
                 Returns:
-                    M.ModelManagerKeys: The object containing the IDs of all loaded models.
+                    M.ModelsDescriptions: The object containing models descriptions
                 """
 
                 self.model_manager.remove(request.model_id)
-                return M.ModelManagerKeys(model_ids=set(self.model_manager.keys()))
+                models_descriptions = self.model_manager.describe_models()
+                return M.ModelsDescriptions.from_models_descriptions(
+                    models_descriptions=models_descriptions
+                )
 
             @app.post(
                 "/model/clear",
-                response_model=M.ModelManagerKeys,
+                response_model=M.ModelsDescriptions,
                 summary="Remove all models",
                 description="Remove all loaded models",
             )
@@ -411,11 +418,14 @@ class HttpInterface(BaseInterface):
                 """Remove all loaded models from the model manager.
 
                 Returns:
-                    M.ModelManagerKeys: The object containing the IDs of all loaded models (empty set in this case).
+                    M.ModelsDescriptions: The object containing models descriptions
                 """
 
                 self.model_manager.clear()
-                return M.ModelManagerKeys(model_ids=set(self.model_manager.keys()))
+                models_descriptions = self.model_manager.describe_models()
+                return M.ModelsDescriptions.from_models_descriptions(
+                    models_descriptions=models_descriptions
+                )
 
             @app.post(
                 "/infer/object_detection",
