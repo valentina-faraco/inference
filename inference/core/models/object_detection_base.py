@@ -106,6 +106,9 @@ class ObjectDetectionBaseOnnxRoboflowInferenceModel(OnnxRoboflowInferenceModel):
             List[ObjectDetectionInferenceResponse]: A list of response objects containing object detection predictions.
         """
 
+        if isinstance(img_dims, dict) and "img_dims" in img_dims:
+            img_dims = img_dims["img_dims"]
+
         responses = [
             ObjectDetectionInferenceResponse(
                 predictions=[
@@ -220,8 +223,16 @@ class ObjectDetectionBaseOnnxRoboflowInferenceModel(OnnxRoboflowInferenceModel):
                 if FIX_BATCH_SIZE or fix_batch_size
                 else 0
             )
-            width_padding = 32 - (img_in.shape[2] % 32)
-            height_padding = 32 - (img_in.shape[3] % 32)
+            width_remainder = img_in.shape[2] % 32
+            height_remainder = img_in.shape[3] % 32
+            if width_remainder > 0:
+                width_padding = 32 - (img_in.shape[2] % 32)
+            else:
+                width_padding = 0
+            if height_remainder > 0:
+                height_padding = 32 - (img_in.shape[3] % 32)
+            else:
+                height_padding = 0
             img_in = np.pad(
                 img_in,
                 ((0, batch_padding), (0, 0), (0, width_padding), (0, height_padding)),

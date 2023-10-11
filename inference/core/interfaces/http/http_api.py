@@ -41,14 +41,12 @@ from inference.core.exceptions import (
 )
 from inference.core.interfaces.base import BaseInterface
 from inference.core.managers.base import ModelManager
-from inference.core.registries.base import ModelRegistry
 
 if LAMBDA:
     from inference.core.usage import trackUsage
 if METLO_KEY:
     from metlo.fastapi import ASGIMiddleware
 
-from inference.core.registries.roboflow import RoboflowModelRegistry
 from inference.core.version import __version__
 
 
@@ -122,13 +120,11 @@ class HttpInterface(BaseInterface):
     Attributes:
         app (FastAPI): The FastAPI application instance.
         model_manager (ModelManager): The manager for handling different models.
-        model_registry (RoboflowModelRegistry): The registry containing the Roboflow models.
     """
 
     def __init__(
         self,
         model_manager: ModelManager,
-        model_registry: RoboflowModelRegistry,
         root_path: Optional[str] = None,
     ):
         """
@@ -136,7 +132,6 @@ class HttpInterface(BaseInterface):
 
         Args:
             model_manager (ModelManager): The manager for handling different models.
-            model_registry (RoboflowModelRegistry): The registry containing the Roboflow models.
             root_path (Optional[str]): The root path for the FastAPI application.
 
         Description:
@@ -204,7 +199,6 @@ class HttpInterface(BaseInterface):
 
         self.app = app
         self.model_manager = model_manager
-        self.model_registry = model_registry
 
         async def process_inference_request(
             inference_request: M.InferenceRequest,
@@ -217,14 +211,9 @@ class HttpInterface(BaseInterface):
             Returns:
                 M.InferenceResponse: The response containing the inference results.
             """
-            if inference_request.model_id not in self.model_manager:
-                model = self.model_registry.get_model(
-                    inference_request.model_id, inference_request.api_key
-                )(
-                    model_id=inference_request.model_id,
-                    api_key=inference_request.api_key,
-                )
-                self.model_manager.add_model(inference_request.model_id, model)
+            self.model_manager.add_model(
+                inference_request.model_id, inference_request.api_key
+            )
             return self.model_manager.infer_from_request(
                 inference_request.model_id, inference_request
             )
@@ -250,14 +239,7 @@ class HttpInterface(BaseInterface):
             core_model_id = (
                 f"{core_model}/{inference_request.__getattribute__(version_id_field)}"
             )
-            if core_model_id not in self.model_manager:
-                model = self.model_registry.get_model(
-                    core_model_id, inference_request.api_key
-                )(
-                    model_id=core_model_id,
-                    api_key=inference_request.api_key,
-                )
-                self.model_manager.add_model(core_model_id, model)
+            self.model_manager.add_model(core_model_id, inference_request.api_key)
             return core_model_id
 
         load_clip_model = partial(load_core_model, core_model="clip")
@@ -334,7 +316,7 @@ class HttpInterface(BaseInterface):
 
             @app.get(
                 "/model/registry",
-                response_model=M.ModelManagerKeys,
+                response_model=M.ModelsDescriptions,
                 summary="Get model keys",
                 description="Get the ID of each loaded model",
             )
@@ -342,14 +324,16 @@ class HttpInterface(BaseInterface):
                 """Get the ID of each loaded model in the registry.
 
                 Returns:
-                    M.ModelManagerKeys: The object containing the IDs of all loaded models.
+                    M.ModelsDescriptions: The object containing models descriptions
                 """
-
-                return M.ModelManagerKeys(model_ids=set(self.model_manager.keys()))
+                models_descriptions = self.model_manager.describe_models()
+                return M.ModelsDescriptions.from_models_descriptions(
+                    models_descriptions=models_descriptions
+                )
 
             @app.post(
                 "/model/add",
-                response_model=M.ModelManagerKeys,
+                response_model=M.ModelsDescriptions,
                 summary="Load a model",
                 description="Load the model with the given model ID",
             )
@@ -361,23 +345,18 @@ class HttpInterface(BaseInterface):
                     request (M.AddModelRequest): The request containing the model ID and optional API key.
 
                 Returns:
-                    M.ModelManagerKeys: The object containing the IDs of all loaded models.
+                    M.ModelsDescriptions: The object containing models descriptions
                 """
 
-                if request.model_id not in self.model_manager:
-                    model_class = self.model_registry.get_model(
-                        request.model_id, request.api_key
-                    )
-                    model = model_class(
-                        model_id=request.model_id, api_key=request.api_key
-                    )
-                    self.model_manager.add_model(request.model_id, model)
-
-                return M.ModelManagerKeys(model_ids=set(self.model_manager.keys()))
+                self.model_manager.add_model(request.model_id, request.api_key)
+                models_descriptions = self.model_manager.describe_models()
+                return M.ModelsDescriptions.from_models_descriptions(
+                    models_descriptions=models_descriptions
+                )
 
             @app.post(
                 "/model/remove",
-                response_model=M.ModelManagerKeys,
+                response_model=M.ModelsDescriptions,
                 summary="Remove a model",
                 description="Remove the model with the given model ID",
             )
@@ -389,15 +368,18 @@ class HttpInterface(BaseInterface):
                     request (M.ClearModelRequest): The request containing the model ID to be removed.
 
                 Returns:
-                    M.ModelManagerKeys: The object containing the IDs of all loaded models.
+                    M.ModelsDescriptions: The object containing models descriptions
                 """
 
                 self.model_manager.remove(request.model_id)
-                return M.ModelManagerKeys(model_ids=set(self.model_manager.keys()))
+                models_descriptions = self.model_manager.describe_models()
+                return M.ModelsDescriptions.from_models_descriptions(
+                    models_descriptions=models_descriptions
+                )
 
             @app.post(
                 "/model/clear",
-                response_model=M.ModelManagerKeys,
+                response_model=M.ModelsDescriptions,
                 summary="Remove all models",
                 description="Remove all loaded models",
             )
@@ -406,11 +388,14 @@ class HttpInterface(BaseInterface):
                 """Remove all loaded models from the model manager.
 
                 Returns:
-                    M.ModelManagerKeys: The object containing the IDs of all loaded models (empty set in this case).
+                    M.ModelsDescriptions: The object containing models descriptions
                 """
 
                 self.model_manager.clear()
-                return M.ModelManagerKeys(model_ids=set(self.model_manager.keys()))
+                models_descriptions = self.model_manager.describe_models()
+                return M.ModelsDescriptions.from_models_descriptions(
+                    models_descriptions=models_descriptions
+                )
 
             @app.post(
                 "/infer/object_detection",
@@ -884,11 +869,7 @@ class HttpInterface(BaseInterface):
                 else:
                     request_model_id = model_id
 
-                if request_model_id not in self.model_manager:
-                    model = self.model_registry.get_model(model_id, api_key)(
-                        model_id=request_model_id, api_key=api_key
-                    )
-                    self.model_manager.add_model(request_model_id, model)
+                self.model_manager.add_model(request_model_id, api_key)
 
                 task_type = self.model_manager.get_task_type(request_model_id)
                 inference_request_type = M.ObjectDetectionInferenceRequest
@@ -962,10 +943,7 @@ class HttpInterface(BaseInterface):
                     JSONResponse: A response object containing the status and a success message.
                 """
                 model_id = f"{dataset_id}/{version_id}"
-                model = self.model_registry.get_model(model_id, api_key)(
-                    model_id=model_id, api_key=api_key
-                )
-                self.model_manager.add_model(model_id, model)
+                self.model_manager.add_model(model_id, api_key)
 
                 return JSONResponse(
                     {

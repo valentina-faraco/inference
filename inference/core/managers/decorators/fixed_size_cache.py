@@ -1,8 +1,10 @@
 from collections import deque
+from typing import List
 
 from inference.core.data_models import InferenceRequest, InferenceResponse
 from inference.core.managers.base import Model, ModelManager
 from inference.core.managers.decorators.base import ModelManagerDecorator
+from inference.core.managers.entities import ModelDescription
 
 
 class WithFixedSizeCache(ModelManagerDecorator):
@@ -17,7 +19,7 @@ class WithFixedSizeCache(ModelManagerDecorator):
         self.max_size = max_size
         self._key_queue = deque(self.model_manager.keys())
 
-    def add_model(self, model_id: str, model: Model):
+    def add_model(self, model_id: str, api_key: str):
         """Adds a model to the manager and evicts the least recently used if the cache is full.
 
         Args:
@@ -30,7 +32,7 @@ class WithFixedSizeCache(ModelManagerDecorator):
             self.remove(to_remove_model_id)
 
         self._key_queue.append(model_id)
-        return super().add_model(model_id, model)
+        return super().add_model(model_id, api_key)
 
     def infer_from_request(
         self, model_id: str, request: InferenceRequest
@@ -75,3 +77,6 @@ class WithFixedSizeCache(ModelManagerDecorator):
         self._key_queue.remove(model_id)
         self._key_queue.append(model_id)
         return super().preprocess(model_id, request)
+
+    def describe_models(self) -> List[ModelDescription]:
+        return self.model_manager.describe_models()
