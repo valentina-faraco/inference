@@ -72,34 +72,36 @@ class WebcamStream:
             self.grabbed = self.vcap.grab()
             if self.grabbed:
                 frame_id += 1
-                if (
-                    self.enforce_fps != "skip"
-                    or t1 >= last_frame_position + skip_seconds
-                ):
+                if (t1 >= last_frame_position + skip_seconds):
                     ret, frame = self.vcap.retrieve()
                     logger.debug("video capture FPS: %s", frame_id / (t1 - t0))
                     if frame is not None:
                         last_frame_position = t1
                         self.frame_id = frame_id
                         self.frame = frame
+                        t2 = time.perf_counter()
+                        next_camera_frame = 1 / self.fps_input_stream - (t2 - t1)
+                        next_process_frame =  1 / self.max_fps + 0.02
+                        if self.enforce_fps:
+                            skip_seconds = 0
+                            time.sleep(max(next_camera_frame, next_process_frame))
+                        else:
+                            skip_seconds = next_process_frame
+                            logger.debug(f"sleep: {next_camera_frame:.2f} skip: {next_process_frame:.2f}")
+                            if next_camera_frame > 0:
+                                time.sleep(next_camera_frame)
                     else:
                         logger.debug("[Exiting] Frame not available to retrieve")
                         self.stopped = True
                         break
+                else:
+                    logger.debug('skip frame')
 
             if self.grabbed is False:
                 logger.debug("[Exiting] No more frames to read")
                 self.stopped = True
                 break
-            if self.enforce_fps:
-                t2 = time.perf_counter()
-                next_frame = max(
-                    1 / self.max_fps + 0.02, 1 / self.fps_input_stream - (t2 - t1)
-                )
-                if self.enforce_fps == "skip":
-                    skip_seconds = next_frame
-                else:
-                    time.sleep(next_frame)
+
         self.vcap.release()
 
     def read_opencv(self):

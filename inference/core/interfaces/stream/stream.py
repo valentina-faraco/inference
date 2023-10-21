@@ -72,6 +72,7 @@ class Stream(BaseInterface):
         on_prediction: Callable = None,
         on_start: Callable = None,
         on_stop: Callable = None,
+        simulate_process_delay = 0
     ):
         """Initialize the stream with the given parameters.
         Prints the server settings and initializes the inference with a test frame.
@@ -110,6 +111,7 @@ class Stream(BaseInterface):
         self.json_response = json_response
         self.use_main_thread = use_main_thread
         self.output_channel_order = output_channel_order
+        self.simulate_process_delay = simulate_process_delay
 
         self.inference_request_type = (
             inference.core.entities.requests.inference.ObjectDetectionInferenceRequest
@@ -248,6 +250,9 @@ class Stream(BaseInterface):
                     max_candidates=self.max_candidates,
                     max_detections=self.max_detections,
                 )
+
+                if (self.simulate_process_delay > 0):
+                    time.sleep(self.simulate_process_delay)
 
                 if self.json_response:
                     predictions = self.model.make_response(
